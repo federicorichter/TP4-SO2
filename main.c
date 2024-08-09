@@ -78,10 +78,12 @@
 #include "PollQ.h"
 #include "semtest.h"
 #include "BlockQ.h"
-#include "stdio.h" 
+#include "string.h"
+#include <stdlib.h>
 
 /* Delay between cycles of the 'check' task. */
 #define mainCHECK_DELAY						( ( TickType_t ) 100 / portTICK_PERIOD_MS )
+#define printSTATS_DELAY					( ( TickType_t ) 5000 / portTICK_PERIOD_MS )
 
 /* UART configuration - note this does not use the FIFO so is not very
 efficient. */
@@ -147,6 +149,12 @@ void vUARTTask(void *pvParameters);
 static char *cMessage = "Task woken by button interrupt! --- ";
 static volatile char *pcNextChar;
 
+
+/*
+ * Creates a top-like visualization of system usage by the tasks
+ */
+static void vTaskGetRunTimeStatsTask(  void *pvParameters );
+
 /* The semaphore used to wake the button handler task from within the GPIO
 interrupt handler. */
 SemaphoreHandle_t xButtonSemaphore;
@@ -181,7 +189,7 @@ int main( void )
 	xTaskCreate( vFilterTask, "Filter", configMINIMAL_STACK_SIZE, NULL, mainCHECK_TASK_PRIORITY - 1 , NULL);
 	xTaskCreate( vPrintTask, "Print", configMINIMAL_STACK_SIZE, NULL, mainCHECK_TASK_PRIORITY - 1, NULL );
 	xTaskCreate( vUARTTask, "UART", configMINIMAL_STACK_SIZE , NULL, mainCHECK_TASK_PRIORITY - 3, NULL );
-
+	xTaskCreate( vTaskGetRunTimeStatsTask, "Stats", configMINIMAL_STACK_SIZE, NULL, mainCHECK_TASK_PRIORITY - 2 , NULL);
 
 	/* Start the scheduler. */
 	vTaskStartScheduler();
@@ -248,7 +256,7 @@ const char *pcFailMessage = "FAIL";
 
 static void prvSetupHardware( void )
 {
-	/* Setup the PLL. */
+		/* Setup the PLL. */
 	SysCtlClockSet( SYSCTL_SYSDIV_10 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN | SYSCTL_XTAL_6MHZ );
 
 
@@ -270,8 +278,8 @@ static void prvSetupHardware( void )
 
 	/* Initialise the LCD> */
     OSRAMInit( false );
-    OSRAMStringDraw("www.FreeRTOS.org", 0, 0);
-	OSRAMStringDraw("LM3S811 demo", 16, 1);
+    OSRAMStringDraw("Lab 4 - SOII", 16, 0);
+	OSRAMStringDraw("LM3S811 ", 16, 1);
 }
 
 /*-----------------------------------------------------------*/
@@ -322,7 +330,7 @@ static void vFilterTask( void *pvParameter )
             	}
             	else if(receivedCommand == 0)
             	{
-            		(N - 1 < 0) ? N = 0 : N--;
+            		(N - 1 <= 0) ? N = 0 : N--;
             	}
         	}
 
@@ -425,3 +433,99 @@ static void vPrintTask( void *pvParameters )
 	}
 }
 
+char* ultoa(unsigned long value, char* str, int base) {
+    char* ptr = str;
+    char* ptr1 = str;
+    char tmp_char;
+    unsigned long tmp_value;
+
+    // Handle the zero case
+    if (value == 0) {
+        *ptr++ = '0';
+        *ptr = '\0';
+        return str;
+    }
+
+    while (value) {
+        tmp_value = value;
+        value /= base;
+        *ptr++ = "0123456789ABCDEF"[tmp_value - value * base];
+    }
+
+    *ptr = '\0';
+
+    // Reverse the string
+    while (ptr1 < ptr) {
+        tmp_char = *--ptr;
+        *ptr = *ptr1;
+        *ptr1++ = tmp_char;
+    }
+
+    return str;
+}
+
+
+void vPrintStats(TaskStatus_t *pxTaskStatusArray) {
+    char pcWriteBuffer[512] = "";
+    char tempStr[32];
+    volatile UBaseType_t uxArraySize, x;
+    unsigned long ulTotalRunTime, ulStatsAsPercentage;
+    
+    if (pxTaskStatusArray != NULL) {
+        uxArraySize = uxTaskGetSystemState(pxTaskStatusArray, uxArraySize, &ulTotalRunTime);
+        ulTotalRunTime /= 100UL;
+        if (ulTotalRunTime > 0) {
+            for (x = 0; x < uxArraySize; x++) {
+                ulStatsAsPercentage = pxTaskStatusArray[x].ulRunTimeCounter / ulTotalRunTime;
+                
+                strcat(pcWriteBuffer, pxTaskStatusArray[x].pcTaskName);
+                strcat(pcWriteBuffer, "\t");
+
+                ultoa(pxTaskStatusArray[x].ulRunTimeCounter, tempStr, 10);
+                strcat(pcWriteBuffer, tempStr);
+                strcat(pcWriteBuffer, "\t");
+
+                ultoa(ulStatsAsPercentage, tempStr, 10);
+                strcat(pcWriteBuffer, tempStr);
+                strcat(pcWriteBuffer, "%\n");
+            }
+        }
+        OSRAMClear();
+        OSRAMStringDraw(pcWriteBuffer, 0, 0);
+    }
+}
+
+
+/*-----------------------------------------------------------*/
+
+static void vTaskGetRunTimeStatsTask(  void *pvParameters )
+{
+
+    TaskStatus_t *pxTaskStatusArray;
+    volatile UBaseType_t uxArraySize;
+    
+
+   	TickType_t xLastExecutionTime;
+	xLastExecutionTime = xTaskGetTickCount();
+
+	uxArraySize = uxTaskGetNumberOfTasks();
+
+	/* Allocate a TaskStatus_t structure for each task. An array could be
+	    	  allocated statically at compile time. */
+	pxTaskStatusArray = pvPortMalloc( uxArraySize * sizeof( TaskStatus_t ) );
+
+	if (pxTaskStatusArray == NULL) {
+    	for (;;)
+      		;
+  		}
+
+
+   	for(;;)
+   	{
+   		vTaskDelayUntil( &xLastExecutionTime, printSTATS_DELAY );
+	   	/* Take a snapshot of the number of tasks in case it changes while this
+	      function is executing. */
+	   	
+	   	vPrintStats( pxTaskStatusArray);
+	}
+}
