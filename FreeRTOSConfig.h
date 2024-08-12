@@ -50,8 +50,18 @@
 #define configUSE_TRACE_FACILITY	1
 #define configUSE_16_BIT_TICKS		0
 #define configIDLE_SHOULD_YIELD		0
+#define configGENERATE_RUN_TIME_STATS 1
 
 #define configMAX_PRIORITIES		( 5 )
+
+
+extern volatile unsigned long ulHighFrequencyTimerTicks;
+/* ulHighFrequencyTimerTicks is already being incremented at 20KHz.  Just set
+its value back to 0. */
+#define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS()                               \
+  (ulHighFrequencyTimerTicks = 0UL)
+
+#define portGET_RUN_TIME_COUNTER_VALUE() ulHighFrequencyTimerTicks
 
 /* Set the following definitions to 1 to include the API function, or zero
 to exclude the API function. */

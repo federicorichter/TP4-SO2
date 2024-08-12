@@ -95,13 +95,13 @@ extern void TimerEnable(unsigned long ulBase, unsigned long ulTimer);
 extern void TimerDisable(unsigned long ulBase, unsigned long ulTimer);
 extern void TimerConfigure(unsigned long ulBase, unsigned long ulConfig);
 extern void TimerControlLevel(unsigned long ulBase, unsigned long ulTimer,
-                              tBoolean bInvert);
+                              int bInvert);
 extern void TimerControlTrigger(unsigned long ulBase, unsigned long ulTimer,
-                                tBoolean bEnable);
+                                int bEnable);
 extern void TimerControlEvent(unsigned long ulBase, unsigned long ulTimer,
                               unsigned long ulEvent);
 extern void TimerControlStall(unsigned long ulBase, unsigned long ulTimer,
-                              tBoolean bStall);
+                              int bStall);
 extern void TimerRTCEnable(unsigned long ulBase);
 extern void TimerRTCDisable(unsigned long ulBase);
 extern void TimerPrescaleSet(unsigned long ulBase, unsigned long ulTimer,
@@ -126,7 +126,7 @@ extern void TimerIntRegister(unsigned long ulBase, unsigned long ulTimer,
 extern void TimerIntUnregister(unsigned long ulBase, unsigned long ulTimer);
 extern void TimerIntEnable(unsigned long ulBase, unsigned long ulIntFlags);
 extern void TimerIntDisable(unsigned long ulBase, unsigned long ulIntFlags);
-extern unsigned long TimerIntStatus(unsigned long ulBase, tBoolean bMasked);
+extern unsigned long TimerIntStatus(unsigned long ulBase, int bMasked);
 extern void TimerIntClear(unsigned long ulBase, unsigned long ulIntFlags);
 extern void TimerQuiesce(unsigned long ulBase);
 

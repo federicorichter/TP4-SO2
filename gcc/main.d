@@ -15,10 +15,11 @@ gcc/main.o: main.c hw_include/DriverLib.h hw_include/DriverLib.h \
  Source/include/projdefs.h Source/include/portable.h \
  Source/include/deprecated_definitions.h \
  Source/include/../../Source/portable/GCC/ARM_CM3/portmacro.h \
- Source/include/mpu_wrappers.h Source/include/task.h \
- Source/include/list.h Source/include/queue.h Source/include/task.h \
- Source/include/semphr.h Source/include/queue.h Common/include/integer.h \
- Common/include/PollQ.h Common/include/semtest.h Common/include/BlockQ.h \
+ Source/include/mpu_wrappers.h hw_include/hw_memmap.h \
+ Source/include/portable.h Source/include/task.h Source/include/list.h \
+ Source/include/queue.h Source/include/task.h Source/include/semphr.h \
+ Source/include/queue.h Common/include/integer.h Common/include/PollQ.h \
+ Common/include/semtest.h Common/include/BlockQ.h \
  /usr/include/newlib/string.h /usr/include/newlib/_ansi.h \
  /usr/include/newlib/newlib.h /usr/include/newlib/_newlib_version.h \
  /usr/include/newlib/sys/config.h /usr/include/newlib/machine/ieeefp.h \

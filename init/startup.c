@@ -39,6 +39,7 @@ extern void xPortSysTickHandler(void);
 //extern void vUART_ISR( void );
 //extern void vGPIO_ISR( void );
 extern void vPortSVCHandler( void );
+extern void Timer0IntHandler( void );
 
 //*****************************************************************************
 //
@@ -86,10 +87,10 @@ void (* const g_pfnVectors[])(void) =
     xPortSysTickHandler,                    // The SysTick handler
     IntDefaultHandler,                      // GPIO Port A
     IntDefaultHandler,                      // GPIO Port B
-    //vGPIO_ISR,								// GPIO Port C
+    IntDefaultHandler,						// GPIO Port C
     IntDefaultHandler,                      // GPIO Port D
     IntDefaultHandler,                      // GPIO Port E
-    //vUART_ISR,								// UART0 Rx and Tx
+    IntDefaultHandler,						// UART0 Rx and Tx
     IntDefaultHandler,                      // UART1 Rx and Tx
     IntDefaultHandler,                      // SSI Rx and Tx
     IntDefaultHandler,                      // I2C Master and Slave
@@ -103,7 +104,7 @@ void (* const g_pfnVectors[])(void) =
     IntDefaultHandler,                      // ADC Sequence 2
     IntDefaultHandler,                      // ADC Sequence 3
     IntDefaultHandler,                      // Watchdog timer
-    IntDefaultHandler,                      // Timer 0 subtimer A
+    Timer0IntHandler,                      // Timer 0 subtimer A
     IntDefaultHandler,                      // Timer 0 subtimer B
     IntDefaultHandler,                      // Timer 1 subtimer A
     IntDefaultHandler,                      // Timer 1 subtimer B
