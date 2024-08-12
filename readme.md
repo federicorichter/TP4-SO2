@@ -350,4 +350,4 @@ static void vTaskGetRunTimeStatsTask(  void *pvParameters )
 }
 ```
 
-![Alt text](FreeRTOS/monitor.png)
+![!\[Alt text\](FreeRTOS/image/monitor.png)](image/monitor.png)
