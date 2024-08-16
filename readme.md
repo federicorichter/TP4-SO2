@@ -21,12 +21,11 @@ int main( void )
 
 
 	/* Start the tasks defined within the file. */
-	//xTaskCreate( vCheckTask, "Check", configMINIMAL_STACK_SIZE, NULL, mainCHECK_TASK_PRIORITY, NULL );
-	xTaskCreate( vSensorTask, "Sensor", configMINIMAL_STACK_SIZE, NULL, mainCHECK_TASK_PRIORITY , NULL);
-	xTaskCreate( vFilterTask, "Filter", configMINIMAL_STACK_SIZE, NULL, mainCHECK_TASK_PRIORITY , NULL);
-	xTaskCreate( vPrintTask, "Print", configMINIMAL_STACK_SIZE, NULL, mainCHECK_TASK_PRIORITY , NULL );
-	xTaskCreate( vUARTTask, "UART", configMINIMAL_STACK_SIZE , NULL, mainCHECK_TASK_PRIORITY - 1, NULL );
-	xTaskCreate( vTaskGetRunTimeStatsTask, "Stats", configMINIMAL_STACK_SIZE, NULL, mainCHECK_TASK_PRIORITY - 2 , NULL);
+	xTaskCreate( vSensorTask, "Sensor", configMINIMAL_STACK_SIZE + 3, NULL, mainTASK_PRIORITY , NULL);
+	xTaskCreate( vFilterTask, "Filter", configMINIMAL_STACK_SIZE + 3, NULL, mainTASK_PRIORITY , NULL);
+	xTaskCreate( vPrintTask, "Print", configMINIMAL_STACK_SIZE, NULL, mainTASK_PRIORITY , NULL );
+	xTaskCreate( vUARTTask, "UART", configMINIMAL_STACK_SIZE , NULL, mainTASK_PRIORITY - 1, NULL );
+	xTaskCreate( vTaskGetRunTimeStatsTask, "Stats", configMINIMAL_STACK_SIZE, NULL, mainTASK_PRIORITY - 2 , NULL);
 
 	/* Start the scheduler. */
 	vTaskStartScheduler();
@@ -36,7 +35,6 @@ int main( void )
 
 	return 0;
 }
-
 ```
 
 Además, debemos inicializar el HW (UART, Clock y Display) desde la función prvSetupHardware.
@@ -66,7 +64,6 @@ static void prvSetupHardware( void )
 	OSRAMStringDraw("LM3S811 ", 16, 1);
 }
 
-
 ```
 
 
@@ -86,7 +83,7 @@ static void vSensorTask(void *pvParameter)
 
 	for( ;; )
 	{
-		vTaskDelayUntil( &xLastExecutionTime, mainCHECK_DELAY ); 
+		vTaskDelayUntil( &xLastExecutionTime, mainCHECK_DELAY );
 		
 		value = values[i];
 
@@ -97,6 +94,7 @@ static void vSensorTask(void *pvParameter)
 	}
 
 }
+
 
 ```
 
@@ -112,7 +110,7 @@ static void vFilterTask( void *pvParameter )
 	int sensorMessage; // received from the sensor
 	int average; // sent to print
 	int buffer[MAX_BUFFER_SIZE]; // buffer with last N temperatures
-	int N = 15; 
+	int N = 10; 
 	int receivedCommand;
 
 	for( ;; )
@@ -128,7 +126,7 @@ static void vFilterTask( void *pvParameter )
             	}
             	else if(receivedCommand == 0)
             	{
-            		(N - 1 <= 0) ? N = 0 : N--;
+            		(N - 1 <= 0) ? N = 1 : N--;
             	}
         	}
 
@@ -243,9 +241,30 @@ static void vPrintTask( void *pvParameters )
 
 ### Water Mark
 
-Para calcular el valor de stack mínimo necesario para cada tarea se utiliza las funcionalidades propias de FreeRTOS que nos devuelven la marca de agua (Water Mark) de cada tarea. Esta hace referencia a la cantidad bytes que podían ser agregados al stack en su momento de mayor uso. Con esta información podemos determinar si nuestro valor de stack asignado a cada tarea es mucho, poco o esta justo. En la carppeta /image se encuentras las capturas de gdb donde se realiza el dbugging y print de la varible que contiene el valor de la Water Mark en cada tarea.
+Para calcular el valor de stack mínimo necesario para cada tarea se utiliza las funcionalidades propias de FreeRTOS que nos devuelven la marca de agua (Water Mark) de cada tarea. Esta hace referencia a la cantidad bytes que podían ser agregados al stack en su momento de mayor uso. Con esta información podemos determinar si nuestro valor de stack asignado a cada tarea es mucho, poco o esta justo. En la carppeta /image se encuentras las capturas de gdb donde se realiza el dbugging y print de la varible que contiene el valor de la Water Mark en cada tarea. 
+
+```c
+	UBaseType_t uxHighWaterMark;
 
 
+    /* Inspect our own high water mark on entering the task. */
+
+    uxHighWaterMark = uxTaskGetStackHighWaterMark( NULL );
+
+```
+
+- Sensor
+	![Alt text](image/sensor.png)
+
+- Filtro
+	![Alt text](image/Filtro.png)
+
+- UART
+
+	![Alt text](image/UART.png)
+
+- Gráfico
+	![Alt text](image/PrintTaskWaterMark.png)
 
 ### Monitor
 
@@ -351,3 +370,16 @@ static void vTaskGetRunTimeStatsTask(  void *pvParameters )
 ```
 
 ![!\[Alt text\](FreeRTOS/image/monitor.png)](image/monitor.png)
+
+### Debugging
+
+Para el correcto debbuging del programa se utilizó gdb-multiarch, el cual es el debugger de GNU pero con soporte para múltiples arquitecturas (en nuestro caso era una arquitectura ARM y donde se intentaba correr era x86). La seguidilla de comandos era la siguiente:
+
+```bash
+gdb-multiarch gcc/RTOSDemo.axf
+
+target remote :1234
+
+break main   //por ejemplo
+```
+

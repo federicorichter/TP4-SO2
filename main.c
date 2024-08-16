@@ -93,18 +93,10 @@ efficient. */
 #define mainFIFO_SET				( 0x10 )
 
 /* Demo task priorities. */
-#define mainQUEUE_POLL_PRIORITY		( tskIDLE_PRIORITY + 2 )
-#define mainCHECK_TASK_PRIORITY		( tskIDLE_PRIORITY + 3 )
-#define mainSEM_TEST_PRIORITY		( tskIDLE_PRIORITY + 1 )
-#define mainBLOCK_Q_PRIORITY		( tskIDLE_PRIORITY + 2 )
-
-/* Demo board specifics. */
-#define mainPUSH_BUTTON             GPIO_PIN_4
+#define mainTASK_PRIORITY		( tskIDLE_PRIORITY + 3 )
 
 /* Misc. */
 #define mainQUEUE_SIZE				( 3 )
-#define mainDEBOUNCE_DELAY			( ( TickType_t ) 150 / portTICK_PERIOD_MS )
-#define mainNO_DELAY				( ( TickType_t ) 0 )
 
 #define MAX_BUFFER_SIZE 			20
 #define DISPLAY_WIDTH				96
@@ -113,17 +105,6 @@ efficient. */
  * Configure the processor and peripherals for this demo.
  */
 static void prvSetupHardware( void );
-
-/*
- * The 'check' task, as described at the top of this file.
- */
-static void vCheckTask( void *pvParameters );
-
-/*
- * The task that is woken by the ISR that processes GPIO interrupts originating
- * from the push button.
- */
-static void vButtonHandlerTask( void *pvParameters );
 
 /*
  * The task that controls access to the LCD.
@@ -144,10 +125,7 @@ static void vFilterTask( void *pvParameter );
  *	Reads from the UART port for new N values
  */
 void vUARTTask(void *pvParameters);
-	
-/* String that is transmitted on the UART. */
-static char *cMessage = "Task woken by button interrupt! --- ";
-static volatile char *pcNextChar;
+
 
 extern void vSetupHighFrequencyTimer(void);
 
@@ -155,10 +133,6 @@ extern void vSetupHighFrequencyTimer(void);
  * Creates a top-like visualization of system usage by the tasks
  */
 static void vTaskGetRunTimeStatsTask(  void *pvParameters );
-
-/* The semaphore used to wake the button handler task from within the GPIO
-interrupt handler. */
-SemaphoreHandle_t xButtonSemaphore;
 
 /* The queue used to send strings to the print task for display on the LCD. */
 QueueHandle_t xPrintQueue;
@@ -185,12 +159,11 @@ int main( void )
 
 
 	/* Start the tasks defined within the file. */
-	//xTaskCreate( vCheckTask, "Check", configMINIMAL_STACK_SIZE, NULL, mainCHECK_TASK_PRIORITY, NULL );
-	xTaskCreate( vSensorTask, "Sensor", configMINIMAL_STACK_SIZE, NULL, mainCHECK_TASK_PRIORITY , NULL);
-	xTaskCreate( vFilterTask, "Filter", configMINIMAL_STACK_SIZE, NULL, mainCHECK_TASK_PRIORITY , NULL);
-	xTaskCreate( vPrintTask, "Print", configMINIMAL_STACK_SIZE, NULL, mainCHECK_TASK_PRIORITY , NULL );
-	xTaskCreate( vUARTTask, "UART", configMINIMAL_STACK_SIZE , NULL, mainCHECK_TASK_PRIORITY - 1, NULL );
-	xTaskCreate( vTaskGetRunTimeStatsTask, "Stats", configMINIMAL_STACK_SIZE, NULL, mainCHECK_TASK_PRIORITY - 2 , NULL);
+	xTaskCreate( vSensorTask, "Sensor", configMINIMAL_STACK_SIZE + 3, NULL, mainTASK_PRIORITY , NULL);
+	xTaskCreate( vFilterTask, "Filter", configMINIMAL_STACK_SIZE + 3, NULL, mainTASK_PRIORITY , NULL);
+	xTaskCreate( vPrintTask, "Print", configMINIMAL_STACK_SIZE, NULL, mainTASK_PRIORITY , NULL );
+	xTaskCreate( vUARTTask, "UART", configMINIMAL_STACK_SIZE , NULL, mainTASK_PRIORITY - 1, NULL );
+	xTaskCreate( vTaskGetRunTimeStatsTask, "Stats", configMINIMAL_STACK_SIZE, NULL, mainTASK_PRIORITY - 2 , NULL);
 
 	/* Start the scheduler. */
 	vTaskStartScheduler();
@@ -199,59 +172,6 @@ int main( void )
 	scheduler. */
 
 	return 0;
-}
-/*-----------------------------------------------------------*/
-
-static void vCheckTask( void *pvParameters )
-{
-portBASE_TYPE xErrorOccurred = pdFALSE;
-TickType_t xLastExecutionTime;
-const char *pcPassMessage = "PASS";
-const char *pcFailMessage = "FAIL";
-
-	/* Initialise xLastExecutionTime so the first call to vTaskDelayUntil()
-	works correctly. */
-	xLastExecutionTime = xTaskGetTickCount();
-
-	for( ;; )
-	{
-		/* Perform this check every mainCHECK_DELAY milliseconds. */
-		vTaskDelayUntil( &xLastExecutionTime, mainCHECK_DELAY );
-
-		/* Has an error been found in any task? */
-
-		if( xAreIntegerMathsTaskStillRunning() != pdTRUE )
-		{
-			xErrorOccurred = pdTRUE;
-		}
-
-		if( xArePollingQueuesStillRunning() != pdTRUE )
-		{
-			xErrorOccurred = pdTRUE;
-		}
-
-		if( xAreSemaphoreTasksStillRunning() != pdTRUE )
-		{
-			xErrorOccurred = pdTRUE;
-		}
-
-		if( xAreBlockingQueuesStillRunning() != pdTRUE )
-		{
-			xErrorOccurred = pdTRUE;
-		}
-
-		/* Send either a pass or fail message.  If an error is found it is
-		never cleared again.  We do not write directly to the LCD, but instead
-		queue a message for display by the print task. */
-		if( xErrorOccurred == pdTRUE )
-		{
-			xQueueSend( xPrintQueue, &pcFailMessage, portMAX_DELAY );
-		}
-		else
-		{
-			xQueueSend( xPrintQueue, &pcPassMessage, portMAX_DELAY );
-		}
-	}
 }
 /*-----------------------------------------------------------*/
 
@@ -298,6 +218,16 @@ static void vSensorTask(void *pvParameter)
 		if(i == 22){ i = 0;}
 		else { i++; }
 
+
+		UBaseType_t uxHighWaterMark;
+
+
+        /* Inspect our own high water mark on entering the task. */
+
+        uxHighWaterMark = uxTaskGetStackHighWaterMark( NULL );
+
+
+
 	}
 
 }
@@ -309,7 +239,7 @@ static void vFilterTask( void *pvParameter )
 	int sensorMessage; // received from the sensor
 	int average; // sent to print
 	int buffer[MAX_BUFFER_SIZE]; // buffer with last N temperatures
-	int N = 15; 
+	int N = 10; 
 	int receivedCommand;
 
 	for( ;; )
@@ -325,7 +255,7 @@ static void vFilterTask( void *pvParameter )
             	}
             	else if(receivedCommand == 0)
             	{
-            		(N - 1 <= 0) ? N = 0 : N--;
+            		(N - 1 <= 0) ? N = 1 : N--;
             	}
         	}
 
